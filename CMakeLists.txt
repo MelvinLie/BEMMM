@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 project(Bembel CXX)
 
 message(STATUS "
-This code contains a modification of the Bembel the higher order C++ 
+This code contains a modification of Bembel the higher order C++ 
 boundary element library, which is subject to the subject to the GNU General 
 Public License version 3. The code is modified for the post processing
 and uncertainty quantification of magnetic measurement data in the context 
