@@ -1,0 +1,3 @@
+add_executable(example_uq_curved_domain.out example_uq_curved_domain)
+target_link_libraries(example_uq_curved_domain.out Eigen3::Eigen)
+

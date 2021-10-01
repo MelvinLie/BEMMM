@@ -1,0 +1,35 @@
+// This file is part of Bembel, the higher order C++ boundary element library.
+// It was written as part of a cooperation of J. Doelz, H. Harbrecht, S. Kurz,
+// M. Multerer, S. Schoeps, and F. Wolf at Technische Universitaet Darmstadt,
+// Universitaet Basel, and Universita della Svizzera italiana, Lugano. This
+// source code is subject to the GNU General Public License version 3 and
+// provided WITHOUT ANY WARRANTY, see <http://www.bembel.eu> for further
+// information.
+
+#ifndef BEMBEL_ACA_MODULE_
+#define BEMBEL_ACA_MODULE_
+
+#include "Measurements"
+
+#include "src/ACA/LocalBernsteinCombination.cpp"
+
+#include "src/ACA/BaseFcnTreeNode.hpp"
+#include "src/ACA/BaseFcnTreeMemory.hpp"
+#include "src/ACA/BaseFcnTree.hpp"
+
+#include "src/ACA/ElementOctTreeNode.hpp"
+#include "src/ACA/ElementOctTreeMemory.hpp"
+#include "src/ACA/ElementOctTree.hpp"
+
+#include "src/ACA/MeasurementBlockClusterTree.cpp"
+#include "src/ACA/FMMBlockClusterTree.cpp"
+#include "src/ACA/BaseFcnMeasBlockClusterTree.cpp"
+#include "src/ACA/ACAMatrix.cpp"
+#include "src/ACA/ACAMatrixRed.cpp"
+#include "src/ACA/ACAMatrixBF.cpp"
+#include "src/ACA/MultipoleMomentContainer.hpp"
+#include "src/ACA/Moment2LocalContainer.hpp"
+
+
+
+#endif

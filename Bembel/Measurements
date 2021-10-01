@@ -1,0 +1,24 @@
+// This file is part of Bembel, the higher order C++ boundary element library.
+// It was written as part of a cooperation of J. Doelz, H. Harbrecht, S. Kurz,
+// M. Multerer, S. Schoeps, and F. Wolf at Technische Universitaet Darmstadt,
+// Universitaet Basel, and Universita della Svizzera italiana, Lugano. This
+// source code is subject to the GNU General Public License version 3 and
+// provided WITHOUT ANY WARRANTY, see <http://www.bembel.eu> for further
+// information.
+
+#ifndef BEMBEL_MEASUREMENTS_MODULE_
+#define BEMBEL_MEASUREMENTS_MODULE_
+
+
+#include "src/Measurements/MeasurementTreeNode.cpp"
+#include "src/Measurements/BinaryTreeNode.cpp"
+#include "src/Measurements/MeasurementTreeMemory.cpp"
+#include "src/Measurements/BinaryTreeMemory.cpp"
+#include "src/Measurements/MeasurementData.cpp"
+#include "src/Measurements/PerturbationCovariance.cpp"
+#include "src/Measurements/ThreeAxisHallProbe.cpp"
+#include "src/Measurements/Sensor.cpp"
+#include "src/Measurements/DiscreteSensor.cpp"
+
+
+#endif

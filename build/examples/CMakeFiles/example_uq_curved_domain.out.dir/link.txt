@@ -1,0 +1,1 @@
+/usr/bin/c++  -std=c++11 -I/home/melvin/cernbox/development/projects/BEMMM -O3 -march=native -flto -fopenmp  -rdynamic CMakeFiles/example_uq_curved_domain.out.dir/example_uq_curved_domain.cpp.o  -o example_uq_curved_domain.out 

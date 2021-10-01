@@ -1,0 +1,7 @@
+/home/melvin/cernbox/development/projects/BEMMM/build/CMakeFiles/rebuild_cache.dir
+/home/melvin/cernbox/development/projects/BEMMM/build/CMakeFiles/debug.dir
+/home/melvin/cernbox/development/projects/BEMMM/build/CMakeFiles/edit_cache.dir
+/home/melvin/cernbox/development/projects/BEMMM/build/CMakeFiles/release.dir
+/home/melvin/cernbox/development/projects/BEMMM/build/examples/CMakeFiles/rebuild_cache.dir
+/home/melvin/cernbox/development/projects/BEMMM/build/examples/CMakeFiles/example_uq_curved_domain.out.dir
+/home/melvin/cernbox/development/projects/BEMMM/build/examples/CMakeFiles/edit_cache.dir
