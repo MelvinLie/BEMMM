@@ -94,7 +94,7 @@ namespace Bembel {
     D.block(3*num_meas,3*num_meas,num_meas,num_meas) = make_toeplitz(cov_t1_,num_meas);
     D.block(4*num_meas,4*num_meas,num_meas,num_meas) = make_toeplitz(cov_t2_,num_meas);
 
-    //found better performance without this
+  
     if(false){
       //off diagonal blocks
       if(axis_id_ == 0){

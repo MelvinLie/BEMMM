@@ -619,6 +619,7 @@ namespace Bembel {
 
         GaussSquare<Constants::maximum_quadrature_degree> GS;
 
+        //increased quadrature degree for derivatives
         auto Q = GS[deg_];
 
         auto super_space = ansatz_space_.get_superspace();

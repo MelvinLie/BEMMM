@@ -191,6 +191,16 @@ class HallProbeArray {
 
   }
 
+  Eigen::VectorXd evaluate_H_tilde(const Eigen::VectorXd &v){
+
+    int M = H_mat.rows();
+    int N = H_mat.cols();
+
+    return H_tilde_.block(0,1,M,N-1) * v.segment(1,N-1);
+
+  }
+
+
   Eigen::MatrixXd evaluate_grad_H(const Eigen::VectorXd &v){
 
     int M = H_mat.rows();
@@ -749,6 +759,19 @@ class HallProbeArray {
 
   }
 
+  Eigen::MatrixXd compute_A_perturbed(const Eigen::SparseMatrix<double> &R_inv){
+
+    //number of measuremements
+    int M = H_mat.rows();
+
+    //number of DoFs
+    int N = ansatz_space_.get_number_of_dofs();
+
+    return H_tilde_.block(0,1,M,N-1).transpose()*R_inv*H_tilde_.block(0,1,M,N-1);
+
+  }
+
+
   Eigen::MatrixXd compute_A(const Eigen::SparseMatrix<double> &R_inv,
                             const Eigen::VectorXd &pert){
 
@@ -761,8 +784,8 @@ class HallProbeArray {
     //Perturbed observation matrix
     Eigen::MatrixXd H_tilde(M,N);
 
-
     compute_H_tilde(pert,H_tilde);
+
 
     return H_tilde.block(0,1,M,N-1).transpose()*R_inv*H_tilde.block(0,1,M,N-1);
 
@@ -778,6 +801,33 @@ class HallProbeArray {
     int N = ansatz_space_.get_number_of_dofs();
 
     return H_mat.block(0,1,M,N-1).transpose() * R_inv * y;
+
+  }
+
+  Eigen::MatrixXd compute_rhs_perturbed(const Eigen::SparseMatrix<double> &R_inv,
+                              const Eigen::VectorXd &y){
+
+    //number of measuremements
+    int M = H_mat.rows();
+
+    //number of DoFs
+    int N = ansatz_space_.get_number_of_dofs();
+
+    return H_tilde_.block(0,1,M,N-1).transpose() * R_inv * y;
+
+  }
+
+  Eigen::MatrixXd compute_rhs_perturbed(const Eigen::SparseMatrix<double> &R_inv,
+                              const Eigen::VectorXd &y,
+                              const Eigen::VectorXd &L_eps){
+
+    //number of measuremements
+    int M = H_mat.rows();
+
+    //number of DoFs
+    int N = ansatz_space_.get_number_of_dofs();
+
+    return H_tilde_.block(0,1,M,N-1).transpose() * (R_inv * y + L_eps);
 
   }
 
@@ -1755,7 +1805,7 @@ class HallProbeArray {
     int col_begin = num_ax+num_ay+num_az;
 
     if(arm_axis_id_ == 0){
-      std::cout << "x axis" << std::endl;
+      //std::cout << "x axis" << std::endl;
 
       //theta 1 is in xy plane
       P.block(0,col_begin,num_meas,num_ay)          = dHt1_x*Ft_y[move_id];
@@ -1773,7 +1823,7 @@ class HallProbeArray {
 
     }
     else if(arm_axis_id_ == 1){
-      std::cout << "y axis" << std::endl;
+      //std::cout << "y axis" << std::endl;
       //theta 1 is in yz plane
       P.block(0,col_begin,num_meas,num_az)          = dHt1_x*Ft_z[move_id];
       P.block(num_meas,col_begin,num_meas,num_az)   = dHt1_y*Ft_z[move_id];
@@ -1787,7 +1837,7 @@ class HallProbeArray {
       P.block(2*num_meas,col_begin,num_meas,num_ax) = dHt2_z*Ft_x[move_id];
     }
     else{
-      std::cout << "z axis" << std::endl;
+      //std::cout << "z axis" << std::endl;
       //theta 1 is in yz plane
       P.block(0,col_begin,num_meas,num_ay)          = dHt1_x*Ft_y[move_id];
       P.block(num_meas,col_begin,num_meas,num_ay)   = dHt1_y*Ft_y[move_id];
@@ -1923,7 +1973,15 @@ class HallProbeArray {
 
     move_ids_.push_back(move_id);
 
+    if(arm_axis_id_ == -1){
+
+      std::cout << " WARNING arm axis is not defined!" << std::endl;
+    }
+
     PerturbationCovariance this_pert_cov(move_cov_file,arm_axis_id_);
+
+    //std::cout << "move_id = " << move_id << std::endl;
+    //std::cout << "move_cov_file = " << move_cov_file << std::endl;
 
     Pert_Covs_.push_back(this_pert_cov);
 
@@ -2032,10 +2090,17 @@ class HallProbeArray {
       }
 
     }
-    dH_.resize(M_large,5*M_small);
-    dH_.setFromTriplets(tripletList.begin(), tripletList.end());
+    //dH_.resize(M_large,5*M_small);
+    //dH_.setFromTriplets(tripletList.begin(), tripletList.end());
 
-    return dH_;
+    //return dH_;
+
+    Eigen::SparseMatrix<double> dH;
+
+    dH.resize(M_large,5*M_small);
+    dH.setFromTriplets(tripletList.begin(), tripletList.end());
+
+    return dH;
   }
 
   Eigen::SparseMatrix<double> compute_sparse_perturbation_matrix(const int index_from,
@@ -2161,12 +2226,17 @@ class HallProbeArray {
     //position of this move in memory
     int move_pos = get_move_index(move_id);
 
-    Eigen::MatrixXd cov = Pert_Covs_[move_pos].get_cov(num_samples);
+    Eigen::MatrixXd cov = Pert_Covs_[move_pos].get_cov(num_samples).eval();
     Eigen::VectorXd p_mean(cov.rows());
     p_mean.setZero();
 
+    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigenSolver(cov);
+    Eigen::MatrixXd normTransform = eigenSolver.eigenvectors()
+                   * eigenSolver.eigenvalues().cwiseSqrt().asDiagonal();
 
-    Eigen::VectorXd sample = generate_gaussian_samples(1, p_mean, cov, std::rand()).col(0);
+
+    Eigen::VectorXd sample = generate_gaussian_samples(1, p_mean, cov, std::rand()).col(0);//
+
 
     return sample;
   }
@@ -2201,6 +2271,8 @@ class HallProbeArray {
 
         move_prec_table_.push_back({ num_positions , move_ids[m] });
 
+        Pert_Covs_[move_pos].get_cov(num_positions);
+
       }
 
     }
@@ -2211,6 +2283,8 @@ class HallProbeArray {
   }
 
   Eigen::MatrixXd get_cov(const int move_pos,const int num_positions){
+
+      std::cout << "move pos = " << move_pos << std::endl;
 
       return Pert_Covs_[move_pos].get_cov(num_positions);
 
@@ -2239,6 +2313,8 @@ class HallProbeArray {
                                         const Eigen::MatrixXd &dH_dt,
                                         const double delta){
 
+
+
     //number of probes
     int num_probes = sensors_.size();
 
@@ -2248,10 +2324,6 @@ class HallProbeArray {
     //position of this move in memory
     //std::cout << "move id = " << move_id << std::endl;
     int move_pos = get_move_index(move_id);
-
-
-    // define the format you want, you only need one instance of this...
-    //const static Eigen::IOFormat CSVFormat(16, Eigen::DontAlignCols, ", ", "\n");
 
     //std::cout << "compute_sparse_perturbation_matrix" << std::endl;
     //compute derivative matrix
@@ -2267,168 +2339,49 @@ class HallProbeArray {
 
     Eigen::SparseMatrix<double> R_inv = get_R_inv(num_samples);
 
+    //Cholesky factorization of R_inv
+    Eigen::SimplicialLLT<Eigen::SparseMatrix<double>> llt_of_R_inv(R_inv);
+
     //std::cout << "compute A" << std::endl;
     //with this we can compute the A matrix
     //we need to apply the sensor precision on the diagonal
     Eigen::MatrixXd A = dH.transpose()*R_inv*dH;
 
 
-    //std::cout << "compute L" << std::endl;
-    //std::cout << "move_pos = " <<  move_pos << std::endl;
-    //std::cout << "num_samples = " <<  num_samples << std::endl;
     //we now compute the prior for regularisation
-
     int pos_in_memory = get_position_in_move_prec_table(num_samples,move_id);
 
     Eigen::MatrixXd L = delta*prec_list_[pos_in_memory];//Pert_Covs_[move_pos].get_cov(num_samples);
 
-    //std::ofstream out_file_L("../../../../../Measurements/synthetic/cylinder/L.csv");
-    //out_file_L << L.format(CSVFormat);
-    //out_file_L.close();
-
     //std::cout << "compute rhs" << std::endl;
     //and now we construct the right hand side
     Eigen::VectorXd rhs(num_probes*num_samples);
     for(int i = 0; i < num_probes; ++i){
       rhs.segment(i*num_samples,num_samples) = residuals.segment(index_from+i*num_meas,num_samples);
     }
-    rhs = dH.transpose()*R_inv*rhs;
 
 
-    //std::cout << "compute LLT" << std::endl;
-    //compute LLT matrix
-    Eigen::LLT<Eigen::MatrixXd> llt_lhs(A + L);
-    Eigen::MatrixXd U = llt_lhs.matrixU();
-
-    //std::cout << "compute mean" << std::endl;
-    //mean
-    Eigen::VectorXd d = llt_lhs.solve(rhs);
-
-    //std::cout << "compute random number" << std::endl;
-    //make identity samples
-    Eigen::MatrixXd eps = generate_gaussian_samples_sparse(1, 0.*d, I_n, std::rand());
-
-    //std::cout << "compute normtransform" << std::endl;
-    //Random perturbation
-    d += U.lu().solve(eps);
-
-    return d;
-  }
-
-  /*
-  Eigen::VectorXd sample_perturbations(const int index_from,
-                                        const int num_samples,
-                                        const int move_id,
-                                        const Eigen::VectorXd residuals,
-                                        const Eigen::MatrixXd &dH_dr,
-                                        const Eigen::MatrixXd &dH_dt,
-                                        const double delta){
-
-    //number of probes
-    int num_probes = sensors_.size();
-
-    //number of total measurements
-    int num_meas = residuals.size()/num_probes;
-
-    //position of this move in memory
-    //std::cout << "move id = " << move_id << std::endl;
-    int move_pos = get_move_index(move_id);
-
-
-    // define the format you want, you only need one instance of this...
-    //const static Eigen::IOFormat CSVFormat(16, Eigen::DontAlignCols, ", ", "\n");
-
-    //std::cout << "compute_sparse_perturbation_matrix" << std::endl;
-    //compute derivative matrix
-    Eigen::SparseMatrix<double> dH = compute_sparse_perturbation_matrix(index_from,
-                                                                        num_samples,
-                                                                        dH_dr,
-                                                                        dH_dt);
-
-    //std::cout << "compute inverse measurement covariance" << std::endl;
     //helper identity matrix
-    Eigen::SparseMatrix<double> I_n(5*num_samples,5*num_samples);
-    I_n.setIdentity();
+    Eigen::SparseMatrix<double> I_m(3*num_samples,3*num_samples);
+    I_m.setIdentity();
 
-    Eigen::SparseMatrix<double> R_inv = get_R_inv(num_samples);
+    Eigen::VectorXd eps = generate_gaussian_samples_sparse(1, Eigen::VectorXd::Zero(3*num_samples), I_m, std::rand()).col(0);
 
-    //std::cout << "compute A" << std::endl;
-    //with this we can compute the A matrix
-    //we need to apply the sensor precision on the diagonal
-    Eigen::MatrixXd A = dH.transpose()*R_inv*dH;
+    Eigen::VectorXd b = dH.transpose()*(R_inv*rhs + llt_of_R_inv.matrixL()*eps);
 
-
-    //std::cout << "compute L" << std::endl;
-    //std::cout << "move_pos = " <<  move_pos << std::endl;
-    //std::cout << "num_samples = " <<  num_samples << std::endl;
-    //we now compute the prior for regularisation
-
-    Eigen::MatrixXd L = delta*Pert_Covs_[move_pos].get_prec(num_samples);//Pert_Covs_[move_pos].get_cov(num_samples);
-
-    //std::ofstream out_file_L("../../../../../Measurements/synthetic/cylinder/L.csv");
-    //out_file_L << L.format(CSVFormat);
-    //out_file_L.close();
-
-    //std::cout << "compute rhs" << std::endl;
-    //and now we construct the right hand side
-    Eigen::VectorXd rhs(num_probes*num_samples);
-    for(int i = 0; i < num_probes; ++i){
-      rhs.segment(i*num_samples,num_samples) = residuals.segment(index_from+i*num_meas,num_samples);
-    }
-    rhs = dH.transpose()*R_inv*rhs;
-
-
-    //std::cout << "compute LLT" << std::endl;
-    //compute LLT matrix
-    Eigen::LLT<Eigen::MatrixXd> llt_lhs(A + L);
-    Eigen::MatrixXd U = llt_lhs.matrixU();
-
-    //std::cout << "compute mean" << std::endl;
-    //mean
-    Eigen::VectorXd d = llt_lhs.solve(rhs);
-
-    //std::cout << "compute random number" << std::endl;
-    //make identity samples
-    Eigen::MatrixXd eps = generate_gaussian_samples_sparse(1, 0.*d, I_n, std::rand());
-
-    //std::cout << "compute normtransform" << std::endl;
-    //Random perturbation
-    d += U.lu().solve(eps);
+    // sample from the posterior by solving a randomized linear equation system
+    Eigen::VectorXd d = (A + L).lu().solve(b);
 
     return d;
+
   }
-  */
+
 
   std::vector<double> get_noise_stdev(){
     return noise_stdev_;
   }
 
-  void compute_H_tilde(const Eigen::VectorXd &pert,
-                        Eigen::MatrixXd &H_tilde){
 
-    int num_meas = pert.size()/5;
-    int num_DoFs = H_mat.cols();
-    int num_probes = sensors_.size();
-
-    H_tilde = H_mat;
-
-    //update
-    for(int m = 0; m < num_meas; ++m){
-      for(int n = 0; n < num_DoFs-1 ; ++n){
-
-        for(int p = 0; p < num_probes; ++p){
-
-          H_tilde(m+p*num_meas,n+1) += dHx_mat(m+p*num_meas,n+1)*pert(m)
-                          + dHy_mat(m+p*num_meas,n+1)*pert(m+num_meas)
-                          + dHz_mat(m+p*num_meas,n+1)*pert(m+2*num_meas)
-                          + dtH_1(m+p*num_meas,n+1)*pert(m+3*num_meas)
-                          + dtH_2(m+p*num_meas,n+1)*pert(m+4*num_meas);
-        }
-
-      }
-    }
-
-  }
 
   void save_uq_matrices(const std::string output_dir){
 
@@ -2495,6 +2448,32 @@ class HallProbeArray {
     return H_mat;
   }
 
+  Eigen::MatrixXd get_dHx(){
+
+    return dHx_mat;
+  }
+
+  Eigen::MatrixXd get_dHy(){
+
+    return dHy_mat;
+  }
+
+  Eigen::MatrixXd get_dHz(){
+
+    return dHz_mat;
+  }
+
+  Eigen::MatrixXd get_dHt1(){
+
+    return dtH_1;
+  }
+
+  Eigen::MatrixXd get_dHt2(){
+
+    return dtH_2;
+  }
+
+
   Eigen::MatrixXcd compute_local_evaluation_matrix(const int L,const Eigen::Vector3d &eval_pos, const Eigen::Vector3d &cell_center){
 
     // number of coefficients
@@ -2519,6 +2498,70 @@ class HallProbeArray {
     return positions_;
   }
 
+  void compute_H_tilde(const Eigen::VectorXd &pert){
+
+    int num_meas = pert.size()/5;
+    int num_DoFs = H_mat.cols();
+    int num_probes = sensors_.size();
+
+    H_tilde_.resize(3*num_meas,num_DoFs);
+    H_tilde_.setZero();
+
+    //update
+    /*
+      */
+    for(int m = 0; m < num_meas; ++m){
+      for(int n = 0; n < num_DoFs-1 ; ++n){
+
+        for(int p = 0; p < num_probes; ++p){
+
+          H_tilde_(m+p*num_meas,n+1) = H_mat(m+p*num_meas,n+1)
+                          + dHx_mat(m+p*num_meas,n+1)*pert(m)
+                          + dHy_mat(m+p*num_meas,n+1)*pert(m+num_meas)
+                          + dHz_mat(m+p*num_meas,n+1)*pert(m+2*num_meas);
+                          + dtH_1(m+p*num_meas,n+1)*pert(m+3*num_meas)
+                          + dtH_2(m+p*num_meas,n+1)*pert(m+4*num_meas);
+        }
+
+      }
+    }
+
+
+  }
+
+
+  void compute_H_tilde(const Eigen::VectorXd &pert,
+                        Eigen::MatrixXd &H_tilde){
+
+    int num_meas = pert.size()/5;
+    int num_DoFs = H_mat.cols();
+    int num_probes = sensors_.size();
+
+
+
+
+    //update
+    /*
+      */
+    for(int m = 0; m < num_meas; ++m){
+      for(int n = 0; n < num_DoFs-1 ; ++n){
+
+        for(int p = 0; p < num_probes; ++p){
+
+          H_tilde(m+p*num_meas,n+1) = H_mat(m+p*num_meas,n+1)
+                          + dHx_mat(m+p*num_meas,n+1)*pert(m)
+                          + dHy_mat(m+p*num_meas,n+1)*pert(m+num_meas)
+                          + dHz_mat(m+p*num_meas,n+1)*pert(m+2*num_meas);
+                          + dtH_1(m+p*num_meas,n+1)*pert(m+3*num_meas)
+                          + dtH_2(m+p*num_meas,n+1)*pert(m+4*num_meas);
+        }
+
+      }
+    }
+
+
+  }
+
  private:
    //Hall Probes
    std::vector<DiscreteSensor<HallProbe<Pot,LinOp>,LinOp> , Eigen::aligned_allocator<DiscreteSensor<HallProbe<Pot,LinOp>,LinOp>> > sensors_;
@@ -2538,7 +2581,7 @@ class HallProbeArray {
    Eigen::VectorXd h_;
 
    //orientation of arm axis
-   int arm_axis_id_;
+   int arm_axis_id_ = -1;
 
    //Transfer matrices for displacements for different moves
    std::vector<Eigen::MatrixXd,Eigen::aligned_allocator<Eigen::MatrixXd>> Fw_x;
@@ -2572,9 +2615,12 @@ class HallProbeArray {
    //Matrices to H and the two dtH
    Eigen::MatrixXd H_mat,dtH_1,dtH_2;
 
+   Eigen::MatrixXd H_tilde_;
 
    //Measurement derivative matrix
    Eigen::MatrixXd dHx_mat,dHy_mat,dHz_mat;
+
+
 
 
 };

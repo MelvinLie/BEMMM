@@ -52,6 +52,13 @@ Eigen::MatrixXd generate_gaussian_samples(int nn, const Eigen::VectorXd mean,con
   Eigen::internal::scalar_normal_dist_op<double> randN; // Gaussian functor
   Eigen::internal::scalar_normal_dist_op<double>::rng.seed(seed); // Seed the rng
 
+  // define the format you want, you only need one instance of this...
+  const static Eigen::IOFormat CSVFormat(16, Eigen::DontAlignCols, ", ", "\n");
+
+  std::ofstream out_file_cov("cov.csv");
+  out_file_cov << covar.format(CSVFormat);
+  out_file_cov.close();
+
 
   Eigen::MatrixXd normTransform(size,size);
 
@@ -69,14 +76,19 @@ Eigen::MatrixXd generate_gaussian_samples(int nn, const Eigen::VectorXd mean,con
     Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigenSolver(covar);
     normTransform = eigenSolver.eigenvectors()
                    * eigenSolver.eigenvalues().cwiseSqrt().asDiagonal();
+
+
   }
+
 
   Eigen::MatrixXd samples = (normTransform
                            * Eigen::MatrixXd::NullaryExpr(size,nn,randN)).colwise()
                            + mean;
 
+
   return samples;
 }
+
 
 
 Eigen::MatrixXd generate_gaussian_samples(int nn, const Eigen::VectorXd mean,const Eigen::SparseMatrix<double> &covar, const int seed = 1)
